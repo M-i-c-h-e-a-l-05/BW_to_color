@@ -1,0 +1,11 @@
+# Virtual environments
+B_to_c/
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large model files
+models/*.caffemodel
