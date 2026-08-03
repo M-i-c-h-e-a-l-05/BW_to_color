@@ -399,61 +399,17 @@ the detected regions.
 
 """)
 
-# ==========================================================
-# IMAGE CALLBACK
-# ==========================================================
+    # ==========================================================
+    # IMAGE CALLBACK
+    # ==========================================================
 
-def colourize_image(
+    def colourize_image(
 
-    image,
+        image,
 
-    blend,
+        blend,
 
-    saturation,
-
-    sky,
-
-    grass,
-
-    tree,
-
-    road,
-
-    building,
-
-    water,
-
-    car,
-
-    person
-
-):
-
-    if image is None:
-
-        return None, "No image uploaded."
-
-    # ---------------------------------------------
-    # Update pipeline parameters
-    # ---------------------------------------------
-
-    pipeline.set_blend_strength(
-
-        blend
-
-    )
-
-    pipeline.set_saturation(
-
-        saturation
-
-    )
-
-    # ---------------------------------------------
-    # Update semantic colours
-    # ---------------------------------------------
-
-    colours = build_colour_dictionary(
+        saturation,
 
         sky,
 
@@ -471,165 +427,165 @@ def colourize_image(
 
         person
 
-    )
+    ):
 
-    update_from_hex_dictionary(
+        if image is None:
 
-        colours
+            return None, "No image uploaded."
 
-    )
+        # ---------------------------------------------
+        # Update pipeline parameters
+        # ---------------------------------------------
 
-    # ---------------------------------------------
-    # Convert image
-    # ---------------------------------------------
+        pipeline.set_blend_strength(
 
-    bgr = cv.cvtColor(
-
-        image,
-
-        cv.COLOR_RGB2BGR
-
-    )
-
-    # ---------------------------------------------
-    # Run AI
-    # ---------------------------------------------
-
-    result = pipeline.process_frame(
-
-        bgr
-
-    )
-
-    # ---------------------------------------------
-    # Detected objects
-    # ---------------------------------------------
-
-    detected = pipeline.get_detected_objects()
-
-    if len(detected) == 0:
-
-        text = "No ADE20K objects detected."
-
-    else:
-
-        text = ", ".join(
-
-            detected
+            blend
 
         )
 
-    # ---------------------------------------------
-    # Convert back
-    # ---------------------------------------------
+        pipeline.set_saturation(
 
-    result = cv.cvtColor(
+            saturation
 
-        result,
+        )
 
-        cv.COLOR_BGR2RGB
+        # ---------------------------------------------
+        # Update semantic colours
+        # ---------------------------------------------
 
-    )
+        colours = build_colour_dictionary(
 
-    return result, text
+            sky,
+
+            grass,
+
+            tree,
+
+            road,
+
+            building,
+
+            water,
+
+            car,
+
+            person
+
+        )
+
+        update_from_hex_dictionary(
+
+            colours
+
+        )
+
+        # ---------------------------------------------
+        # Convert image
+        # ---------------------------------------------
+
+        bgr = cv.cvtColor(
+
+            image,
+
+            cv.COLOR_RGB2BGR
+
+        )
+
+        # ---------------------------------------------
+        # Run AI
+        # ---------------------------------------------
+
+        result = pipeline.process_frame(
+
+            bgr
+
+        )
+
+        # ---------------------------------------------
+        # Detected objects
+        # ---------------------------------------------
+
+        detected = pipeline.get_detected_objects()
+
+        if len(detected) == 0:
+
+            text = "No ADE20K objects detected."
+
+        else:
+
+            text = ", ".join(
+
+                detected
+
+            )
+
+        # ---------------------------------------------
+        # Convert back
+        # ---------------------------------------------
+
+        result = cv.cvtColor(
+
+            result,
+
+            cv.COLOR_BGR2RGB
+
+        )
+
+        return result, text
 
 
-# ==========================================================
-# RESET BUTTON
-# ==========================================================
+    # ==========================================================
+    # RESET BUTTON
+    # ==========================================================
 
-def reset_everything():
+    def reset_everything():
 
-    pipeline.reset()
+        pipeline.reset()
 
-    return (
+        return (
 
-        DEFAULT_GUI_COLOURS["sky"],
+            DEFAULT_GUI_COLOURS["sky"],
 
-        DEFAULT_GUI_COLOURS["grass"],
+            DEFAULT_GUI_COLOURS["grass"],
 
-        DEFAULT_GUI_COLOURS["tree"],
+            DEFAULT_GUI_COLOURS["tree"],
 
-        DEFAULT_GUI_COLOURS["road"],
+            DEFAULT_GUI_COLOURS["road"],
 
-        DEFAULT_GUI_COLOURS["building"],
+            DEFAULT_GUI_COLOURS["building"],
 
-        DEFAULT_GUI_COLOURS["water"],
+            DEFAULT_GUI_COLOURS["water"],
 
-        DEFAULT_GUI_COLOURS["car"],
+            DEFAULT_GUI_COLOURS["car"],
 
-        DEFAULT_GUI_COLOURS["person"],
+            DEFAULT_GUI_COLOURS["person"],
 
-        "",
+            "",
 
-        None
+            None
 
-    )
+        )
 
 
-# ==========================================================
-# CLEAR OUTPUT
-# ==========================================================
+    # ==========================================================
+    # CLEAR OUTPUT
+    # ==========================================================
 
-def clear_output():
-
-    return None, ""
-
-# ==========================================================
-# WEBCAM CALLBACK
-# ==========================================================
-
-def colourize_webcam_live(
-
-    frame,
-
-    blend,
-
-    saturation,
-
-    sky,
-
-    grass,
-
-    tree,
-
-    road,
-
-    building,
-
-    water,
-
-    car,
-
-    person
-
-):
-
-    if frame is None:
+    def clear_output():
 
         return None, ""
 
-    # ---------------------------------------------
-    # Update pipeline settings
-    # ---------------------------------------------
+    # ==========================================================
+    # WEBCAM CALLBACK
+    # ==========================================================
 
-    pipeline.set_blend_strength(
+    def colourize_webcam_live(
 
-        blend
+        frame,
 
-    )
+        blend,
 
-    pipeline.set_saturation(
-
-        saturation
-
-    )
-
-    # ---------------------------------------------
-    # Update semantic colours
-    # ---------------------------------------------
-
-    colours = build_colour_dictionary(
+        saturation,
 
         sky,
 
@@ -647,384 +603,386 @@ def colourize_webcam_live(
 
         person
 
-    )
+    ):
 
-    update_from_hex_dictionary(
+        if frame is None:
 
-        colours
+            return None, ""
 
-    )
+        # ---------------------------------------------
+        # Update pipeline settings
+        # ---------------------------------------------
 
-    # ---------------------------------------------
-    # Convert RGB -> BGR
-    # ---------------------------------------------
+        pipeline.set_blend_strength(
 
-    bgr = cv.cvtColor(
+            blend
 
-        frame,
+        )
 
-        cv.COLOR_RGB2BGR
+        pipeline.set_saturation(
 
-    )
+            saturation
 
-    # ---------------------------------------------
-    # AI Processing
-    # ---------------------------------------------
+        )
 
-    output = pipeline.process_frame(
+        # ---------------------------------------------
+        # Update semantic colours
+        # ---------------------------------------------
 
-        bgr
+        colours = build_colour_dictionary(
 
-    )
+            sky,
 
-    # ---------------------------------------------
-    # Get detected ADE20K classes
-    # ---------------------------------------------
+            grass,
 
-    detected = pipeline.get_detected_objects()
+            tree,
 
-    if len(detected) == 0:
+            road,
 
-        detected_text = "No objects detected"
+            building,
 
-    else:
+            water,
 
-        detected_text = ", ".join(
+            car,
+
+            person
+
+        )
+
+        update_from_hex_dictionary(
+
+            colours
+
+        )
+
+        # ---------------------------------------------
+        # Convert RGB -> BGR
+        # ---------------------------------------------
+
+        bgr = cv.cvtColor(
+
+            frame,
+
+            cv.COLOR_RGB2BGR
+
+        )
+
+        # ---------------------------------------------
+        # AI Processing
+        # ---------------------------------------------
+
+        output = pipeline.process_frame(
+
+            bgr
+
+        )
+
+        # ---------------------------------------------
+        # Get detected ADE20K classes
+        # ---------------------------------------------
+
+        detected = pipeline.get_detected_objects()
+
+        if len(detected) == 0:
+
+            detected_text = "No objects detected"
+
+        else:
+
+            detected_text = ", ".join(
+
+                detected
+
+            )
+
+        # ---------------------------------------------
+        # Convert back
+        # ---------------------------------------------
+
+        output = cv.cvtColor(
+
+            output,
+
+            cv.COLOR_BGR2RGB
+
+        )
+
+        return output, detected_text
+
+
+    # ==========================================================
+    # SLIDER CALLBACKS
+    # ==========================================================
+
+    def update_blend_strength(
+
+        value
+
+    ):
+
+        pipeline.set_blend_strength(
+
+            value
+
+        )
+
+
+    def update_saturation(
+
+        value
+
+    ):
+
+        pipeline.set_saturation(
+
+            value
+
+        )
+
+
+    # ==========================================================
+    # DETECT OBJECTS ONLY
+    # ==========================================================
+
+    def detect_objects(
+
+        image
+
+    ):
+
+        if image is None:
+
+            return ""
+
+        bgr = cv.cvtColor(
+
+            image,
+
+            cv.COLOR_RGB2BGR
+
+        )
+
+        rgb = cv.cvtColor(
+
+            bgr,
+
+            cv.COLOR_BGR2RGB
+
+        )
+
+        class_map = pipeline.segmenter.segment(
+
+            rgb
+
+        )
+
+        detected = pipeline.segmenter.detected_classes(
+
+            class_map
+
+        )
+
+        if len(detected) == 0:
+
+            return "No objects detected"
+
+        return ", ".join(
 
             detected
 
         )
 
-    # ---------------------------------------------
-    # Convert back
-    # ---------------------------------------------
+    # ==========================================================
+    # IMAGE EVENTS
+    # ==========================================================
 
-    output = cv.cvtColor(
+    image_button.click(
 
-        output,
+        fn=colourize_image,
 
-        cv.COLOR_BGR2RGB
+        inputs=[
 
-    )
+            image_input,
 
-    return output, detected_text
+            blend_slider,
 
+            saturation_slider,
 
-# ==========================================================
-# SLIDER CALLBACKS
-# ==========================================================
+            sky_picker,
 
-def update_blend_strength(
+            grass_picker,
 
-    value
+            tree_picker,
 
-):
+            road_picker,
 
-    pipeline.set_blend_strength(
+            building_picker,
 
-        value
+            water_picker,
 
-    )
+            car_picker,
 
+            person_picker
 
-def update_saturation(
+        ],
 
-    value
+        outputs=[
 
-):
+            image_output,
 
-    pipeline.set_saturation(
+            detected_box
 
-        value
-
-    )
-
-
-# ==========================================================
-# DETECT OBJECTS ONLY
-# ==========================================================
-
-def detect_objects(
-
-    image
-
-):
-
-    if image is None:
-
-        return ""
-
-    bgr = cv.cvtColor(
-
-        image,
-
-        cv.COLOR_RGB2BGR
+        ]
 
     )
 
-    rgb = cv.cvtColor(
+    image_input.change(
 
-        bgr,
+        fn=clear_output,
 
-        cv.COLOR_BGR2RGB
+        inputs=[],
 
-    )
+        outputs=[
 
-    class_map = pipeline.segmenter.segment(
+            image_output,
 
-        rgb
+            detected_box
 
-    )
-
-    detected = pipeline.segmenter.detected_classes(
-
-        class_map
+        ]
 
     )
 
-    if len(detected) == 0:
+    # ==========================================================
+    # WEBCAM EVENTS
+    # ==========================================================
 
-        return "No objects detected"
+    webcam_input.stream(
 
-    return ", ".join(
+        fn=colourize_webcam_live,
 
-        detected
+        inputs=[
+
+            webcam_input,
+
+            blend_slider,
+
+            saturation_slider,
+
+            sky_picker,
+
+            grass_picker,
+
+            tree_picker,
+
+            road_picker,
+
+            building_picker,
+
+            water_picker,
+
+            car_picker,
+
+            person_picker
+
+        ],
+
+        outputs=[
+
+            webcam_output,
+
+            detected_box
+
+        ]
 
     )
 
-# ==========================================================
-# IMAGE EVENTS
-# ==========================================================
+    # ==========================================================
+    # SLIDER EVENTS
+    # ==========================================================
 
-image_button.click(
+    blend_slider.change(
 
-    fn=colourize_image,
+        fn=update_blend_strength,
 
-    inputs=[
+        inputs=blend_slider,
 
-        image_input,
-
-        blend_slider,
-
-        saturation_slider,
-
-        sky_picker,
-
-        grass_picker,
-
-        tree_picker,
-
-        road_picker,
-
-        building_picker,
-
-        water_picker,
-
-        car_picker,
-
-        person_picker
-
-    ],
-
-    outputs=[
-
-        image_output,
-
-        detected_box
-
-    ]
-
-)
-
-image_input.change(
-
-    fn=clear_output,
-
-    inputs=[],
-
-    outputs=[
-
-        image_output,
-
-        detected_box
-
-    ]
-
-)
-
-# ==========================================================
-# WEBCAM EVENTS
-# ==========================================================
-
-webcam_input.stream(
-
-    fn=colourize_webcam_live,
-
-    inputs=[
-
-        webcam_input,
-
-        blend_slider,
-
-        saturation_slider,
-
-        sky_picker,
-
-        grass_picker,
-
-        tree_picker,
-
-        road_picker,
-
-        building_picker,
-
-        water_picker,
-
-        car_picker,
-
-        person_picker
-
-    ],
-
-    outputs=[
-
-        webcam_output,
-
-        detected_box
-
-    ]
-
-)
-
-# ==========================================================
-# SLIDER EVENTS
-# ==========================================================
-
-blend_slider.change(
-
-    fn=update_blend_strength,
-
-    inputs=blend_slider,
-
-    outputs=[]
-
-)
-
-saturation_slider.change(
-
-    fn=update_saturation,
-
-    inputs=saturation_slider,
-
-    outputs=[]
-
-)
-
-# ==========================================================
-# LIVE OBJECT DETECTION
-# ==========================================================
-
-image_input.change(
-
-    fn=detect_objects,
-
-    inputs=image_input,
-
-    outputs=detected_box
-
-)
-
-# ==========================================================
-# RESET BUTTON EVENT
-# ==========================================================
-
-reset_button.click(
-
-    fn=reset_everything,
-
-    inputs=[],
-
-    outputs=[
-
-        sky_picker,
-
-        grass_picker,
-
-        tree_picker,
-
-        road_picker,
-
-        building_picker,
-
-        water_picker,
-
-        car_picker,
-
-        person_picker,
-
-        detected_box,
-
-        image_output
-
-    ]
-
-)
-
-# ==========================================================
-# VIDEO CALLBACK
-# ==========================================================
-
-def colourize_video(
-
-    video_path,
-
-    frame_skip,
-
-    blend,
-
-    saturation,
-
-    sky,
-
-    grass,
-
-    tree,
-
-    road,
-
-    building,
-
-    water,
-
-    car,
-
-    person,
-
-    progress=gr.Progress()
-
-):
-
-    if video_path is None:
-
-        return None
-
-    # ---------------------------------------------
-    # Update pipeline
-    # ---------------------------------------------
-
-    pipeline.set_blend_strength(
-
-        blend
+        outputs=[]
 
     )
 
-    pipeline.set_saturation(
+    saturation_slider.change(
 
-        saturation
+        fn=update_saturation,
+
+        inputs=saturation_slider,
+
+        outputs=[]
 
     )
 
-    colours = build_colour_dictionary(
+    # ==========================================================
+    # LIVE OBJECT DETECTION
+    # ==========================================================
+
+    image_input.change(
+
+        fn=detect_objects,
+
+        inputs=image_input,
+
+        outputs=detected_box
+
+    )
+
+    # ==========================================================
+    # RESET BUTTON EVENT
+    # ==========================================================
+
+    reset_button.click(
+
+        fn=reset_everything,
+
+        inputs=[],
+
+        outputs=[
+
+            sky_picker,
+
+            grass_picker,
+
+            tree_picker,
+
+            road_picker,
+
+            building_picker,
+
+            water_picker,
+
+            car_picker,
+
+            person_picker,
+
+            detected_box,
+
+            image_output
+
+        ]
+
+    )
+
+    # ==========================================================
+    # VIDEO CALLBACK
+    # ==========================================================
+
+    def colourize_video(
+
+        video_path,
+
+        frame_skip,
+
+        blend,
+
+        saturation,
 
         sky,
 
@@ -1040,92 +998,134 @@ def colourize_video(
 
         car,
 
-        person
+        person,
+
+        progress=gr.Progress()
+
+    ):
+
+        if video_path is None:
+
+            return None
+
+        # ---------------------------------------------
+        # Update pipeline
+        # ---------------------------------------------
+
+        pipeline.set_blend_strength(
+
+            blend
+
+        )
+
+        pipeline.set_saturation(
+
+            saturation
+
+        )
+
+        colours = build_colour_dictionary(
+
+            sky,
+
+            grass,
+
+            tree,
+
+            road,
+
+            building,
+
+            water,
+
+            car,
+
+            person
+
+        )
+
+        update_from_hex_dictionary(
+
+            colours
+
+        )
+
+        # ---------------------------------------------
+        # Output path
+        # ---------------------------------------------
+
+        output_video = tempfile.NamedTemporaryFile(
+
+            suffix=".mp4",
+
+            delete=False
+
+        ).name
+
+        progress(
+
+            0,
+
+            desc="Processing Video..."
+
+        )
+
+        pipeline.process_video_file(
+
+            video_path,
+
+            output_video,
+
+            frame_skip=int(frame_skip)
+
+        )
+
+        return output_video
+
+
+    # ==========================================================
+    # VIDEO EVENTS
+    # ==========================================================
+
+    process_video.click(
+
+        fn=colourize_video,
+
+        inputs=[
+
+            video_input,
+
+            frame_skip,
+
+            blend_slider,
+
+            saturation_slider,
+
+            sky_picker,
+
+            grass_picker,
+
+            tree_picker,
+
+            road_picker,
+
+            building_picker,
+
+            water_picker,
+
+            car_picker,
+
+            person_picker
+
+        ],
+
+        outputs=video_output
 
     )
 
-    update_from_hex_dictionary(
-
-        colours
-
-    )
-
-    # ---------------------------------------------
-    # Output path
-    # ---------------------------------------------
-
-    output_video = tempfile.NamedTemporaryFile(
-
-        suffix=".mp4",
-
-        delete=False
-
-    ).name
-
-    progress(
-
-        0,
-
-        desc="Processing Video..."
-
-    )
-
-    pipeline.process_video_file(
-
-        video_path,
-
-        output_video,
-
-        frame_skip=int(frame_skip)
-
-    )
-
-    return output_video
-
-
-# ==========================================================
-# VIDEO EVENTS
-# ==========================================================
-
-process_video.click(
-
-    fn=colourize_video,
-
-    inputs=[
-
-        video_input,
-
-        frame_skip,
-
-        blend_slider,
-
-        saturation_slider,
-
-        sky_picker,
-
-        grass_picker,
-
-        tree_picker,
-
-        road_picker,
-
-        building_picker,
-
-        water_picker,
-
-        car_picker,
-
-        person_picker
-
-    ],
-
-    outputs=video_output
-
-)
-
-# ==========================================================
-# START APP
-# ==========================================================
+    # ==========================================================
+    # START APP
+    # ==========================================================
 
 if __name__ == "__main__":
 

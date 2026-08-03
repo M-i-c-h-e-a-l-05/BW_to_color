@@ -1,112 +1,259 @@
-# Real-time Multi-Object Colorization with Semantic Segmentation
+# Real-time Semantic-Aware Image & Video Colorization
 
-**Internship task, built on top of the base colorization project** (see
-the top-level `README.md` for that project). This module adds semantic
-segmentation so different object types in a frame can be colorized with
-their own predetermined color scheme, and wraps the whole thing in a
-real-time GUI for webcam or uploaded video.
+This project extends the original **Zhang et al. image colorization model** by combining it with **semantic segmentation** to produce more context-aware colorization. Instead of relying only on grayscale image features, the system first identifies the objects present in the scene and then applies object-specific color guidance before generating the final colorized output.
 
-## How it builds on the base project
+The application provides an interactive **Gradio interface** for processing images, webcam streams, and videos in real time.
 
-This isn't a separate project -- `realtime_colorizer.py` directly imports
-and reuses `load_colorizer()` from `../colorize_pretrained.py`. The
-general "what color should this pixel be" prediction still comes from
-the same pretrained Zhang et al. colorizer used in the base project.
-What's new here is a semantic segmentation pass that identifies specific
-object regions and *overrides* the AI's color guess in those regions
-with a fixed, predetermined color for that class -- e.g. always tinting
-detected cars/buses/bikes toward a "vehicle" color, regardless of what
-the general colorizer alone would have guessed.
+---
 
-## Pipeline
+# Project Overview
+
+The original colorization model predicts realistic colors for grayscale images using deep learning. While the results are often visually pleasing, the model may assign inconsistent colors to important objects.
+
+This project improves the output by introducing a semantic understanding stage.
+
+A **SegFormer semantic segmentation model trained on the ADE20K dataset** detects objects and scene elements such as:
+
+* Sky
+* Buildings
+* Roads
+* Trees
+* Grass
+* Water
+* Mountains
+* Cars
+* Buses
+* Motorcycles
+* Bicycles
+* People
+* Animals
+* Furniture
+* Walls
+* Sidewalks
+* Many other urban and natural scene classes
+
+Each detected semantic class is assigned a predefined color palette that guides the colorization network toward more consistent and realistic outputs.
+
+---
+
+# Processing Pipeline
 
 ```
-frame -> [base AI colorizer]  -> generic a,b color prediction (whole frame)
-      -> [segmentation model] -> per-pixel class map
-      -> for each pixel: if its class has a predetermined color,
-         override the base a,b prediction with that color (soft-edged,
-         so it blends rather than looking like a cutout)
-      -> recombine with original L channel -> final colorized frame
+Input Image / Webcam / Video
+            │
+            ▼
+Convert to Grayscale
+            │
+            ▼
+Semantic Segmentation
+(SegFormer + ADE20K)
+            │
+            ▼
+Generate Per-Pixel Class Map
+            │
+            ▼
+Original Zhang Colorization Network
+            │
+            ▼
+Semantic Color Guidance
+(Object-Specific Color Priors)
+            │
+            ▼
+LAB Color Reconstruction
+            │
+            ▼
+Final Colorized Output
 ```
 
-The L (lightness/detail) channel is never touched, so edges and texture
-stay sharp even in overridden regions.
+The luminance (**L**) channel is preserved from the original grayscale image, while only the chrominance (**a** and **b**) channels are modified. This preserves image detail and sharp edges.
 
-## Object classes and color schemes
+---
 
-The segmentation model (torchvision's DeepLabV3, MobileNetV3 backbone,
-trained on COCO with Pascal VOC's 21-class label set) recognizes:
+# Features
 
-| Group | VOC classes included | Color |
-|---|---|---|
-| Vehicle | car, bus, motorbike, bicycle, train, aeroplane, boat | muted red/orange |
-| Vegetation | pottedplant | green |
-| Person | person | warm skin tone |
-| Animal | bird, cat, cow, dog, horse, sheep | warm brown/tan |
-| Furniture | chair, diningtable, sofa, tvmonitor, bottle | neutral warm gray |
+* Semantic-aware image colorization
+* Real-time webcam colorization
+* Video colorization
+* Object-specific color guidance
+* Adjustable blending strength
+* Adjustable color saturation
+* CPU and GPU support
+* Interactive Gradio interface
 
-See `class_colors.py` for the exact Lab (a,b) values and how to change them.
+---
 
-### Known limitation: no dedicated "building" class
+# Semantic Segmentation
 
-The task description names vehicles, trees, and buildings as example
-categories. Readily available, easily-verified pretrained segmentation
-models (COCO/VOC-trained, as used here) don't include a "building"
-class -- that requires a Cityscapes-trained model (which does have
-building/road/sky/etc.), and those pretrained checkpoints are larger and
-come from less standardized sources.
+The project uses **SegFormer**, a transformer-based semantic segmentation architecture, trained on the **ADE20K** dataset containing **150 semantic classes**.
 
-**Trees** are approximated using VOC's `pottedplant` class, the closest
-available proxy -- it won't catch large background trees/forests well,
-only plant-like foreground objects.
+Unlike object detection, semantic segmentation predicts a class label for every pixel in the image, allowing different regions to receive different color guidance.
 
-**To add real building detection:** swap `segmenter.py`'s model for a
-Cityscapes-pretrained one (e.g. via `segmentation-models-pytorch` with a
-Cityscapes checkpoint, or a repo like `VainF/DeepLabV3Plus-Pytorch`), and
-update `class_colors.py`'s `VOC_CLASSES` list and `CLASS_GROUPS` mapping
-to match that model's label set (which includes `building`, `road`,
-`sky`, `vegetation`, `sidewalk`, etc. directly). The rest of the pipeline
-(`realtime_colorizer.py`) doesn't need to change -- it just consumes
-whatever class list `segmenter.py` provides.
+Example detected categories include:
 
-## Setup
+* Buildings
+* Sky
+* Trees
+* Grass
+* Water
+* Roads
+* Cars
+* Trucks
+* Buses
+* Motorcycles
+* Bicycles
+* People
+* Furniture
+* Mountains
+* Rivers
+* Walls
+* Sidewalks
+* Windows
+* Doors
+* Vegetation
+* Indoor objects
+
+This enables the model to produce more contextually appropriate colorization than a generic colorization model alone.
+
+---
+
+# Color Guidance
+
+After segmentation, each semantic class is mapped to a predefined color prior.
+
+Example mappings include:
+
+| Semantic Class | Example Color Bias     |
+| -------------- | ---------------------- |
+| Sky            | Blue                   |
+| Vegetation     | Green                  |
+| Water          | Cyan / Blue            |
+| Road           | Gray                   |
+| Building       | Beige / Gray           |
+| Vehicle        | Red / Blue / Silver    |
+| Person         | Natural skin tones     |
+| Animals        | Brown / Natural colors |
+| Furniture      | Neutral colors         |
+
+These color priors are softly blended with the base colorization output to maintain realistic transitions and avoid harsh boundaries.
+
+---
+
+# Project Structure
+
+```
+semantic_colorization/
+│
+├── app_realtime.py
+├── realtime_colorizer.py
+├── segmenter.py
+├── class_colors.py
+├── README.md
+│
+└── ../model1/
+    ├── colorize_pretrained.py
+    └── models/
+```
+
+---
+
+# Requirements
+
+Install the required packages:
+
+```bash
+pip install torch torchvision transformers opencv-python pillow numpy gradio
+```
+
+The project also requires the pretrained Zhang colorization model files from the parent project.
+
+The SegFormer model is automatically downloaded from the Hugging Face Hub the first time the application is executed.
+
+---
+
+# Running the Application
 
 ```bash
 cd semantic_colorization
-pip install torch torchvision opencv-python numpy pillow gradio
-```
-
-Requires the base project's pretrained colorizer model files already
-downloaded (see `../download_pretrained_model.py` in the parent folder).
-
-The segmentation model's weights download automatically from
-`download.pytorch.org` the first time `Segmenter()` is created.
-
-## Running it
-
-```bash
 python app_realtime.py
 ```
 
-Opens a Gradio interface with two tabs:
-- **Webcam (live):** streams your camera, colorizing each frame in real time.
-- **Upload video:** upload a video file, get back a fully colorized version.
-  A frame-skip slider trades quality for speed (repeats the last
-  colorized frame between processed ones) -- useful on CPU-only machines.
+The Gradio interface provides multiple processing modes:
 
-## Performance notes
+* Image Colorization
+* Webcam Colorization
+* Video Colorization
 
-Running both a colorization network and a segmentation network per frame
-is heavier than either alone. On CPU, expect roughly 1-3 frames/sec
-depending on hardware -- real-time in the sense of "continuously
-updating," but not high frame rate. A CUDA GPU will be substantially
-faster. The MobileNetV3 segmentation backbone was specifically chosen
-over the more accurate ResNet backbones available in torchvision for
-this reason.
+---
 
-## Files
+# Performance
 
-- `class_colors.py` -- VOC class list, class groupings, and predetermined colors
-- `segmenter.py` -- loads the pretrained segmentation model, runs inference
-- `realtime_colorizer.py` -- combines segmentation + base colorizer into one pipeline
-- `app_realtime.py` -- Gradio GUI (webcam + video upload)
+The pipeline performs both semantic segmentation and image colorization for every frame.
+
+Performance depends on hardware.
+
+Approximate CPU performance:
+
+* Image Processing: 1–5 seconds per image
+* Webcam: 1–3 FPS
+* Video: Depends on frame skipping and resolution
+
+Using a CUDA-enabled GPU significantly improves throughput and allows near real-time processing.
+
+---
+
+# Core Files
+
+### app_realtime.py
+
+Provides the Gradio user interface and handles image, webcam, and video processing.
+
+### realtime_colorizer.py
+
+Implements the complete semantic-aware colorization pipeline by combining semantic segmentation with the Zhang colorization network.
+
+### segmenter.py
+
+Loads the pretrained SegFormer semantic segmentation model and performs inference.
+
+### class_colors.py
+
+Defines semantic class mappings and corresponding color priors used during colorization.
+
+---
+
+# Technologies Used
+
+* Python
+* PyTorch
+* Transformers (Hugging Face)
+* OpenCV
+* NumPy
+* Pillow
+* Gradio
+
+---
+
+# Future Improvements
+
+* User-selectable color palettes
+* Automatic scene-specific color adaptation
+* Temporal consistency for videos
+* Higher-resolution semantic segmentation
+* GPU optimization
+* Batch image processing
+* Custom semantic color profiles
+* Exportable semantic masks
+
+---
+
+# References
+
+1. Richard Zhang, Phillip Isola, Alexei A. Efros, *Colorful Image Colorization*, ECCV 2016.
+
+2. Enze Xie et al., *SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers*, NeurIPS 2021.
+
+3. ADE20K Scene Parsing Dataset.
+
+4. PyTorch.
+
+5. Hugging Face Transformers.
