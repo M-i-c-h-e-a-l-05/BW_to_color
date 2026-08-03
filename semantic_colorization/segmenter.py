@@ -1,52 +1,130 @@
 """
-Semantic segmentation for identifying object regions in a frame.
+Semantic segmentation using SegFormer trained on ADE20K.
 
-Uses torchvision's pretrained DeepLabV3 (MobileNetV3 backbone -- chosen
-over the ResNet backbones specifically for real-time speed, at some cost
-to segmentation accuracy). Trained on COCO, using the Pascal VOC 21-class
-label set (see class_colors.py for the full list and its limitations).
+Model:
+    nvidia/segformer-b2-finetuned-ade-512-512
+
+Dataset:
+    ADE20K (150 semantic classes)
+
+Returns:
+    H x W semantic segmentation mask
 """
+
+import numpy as np
 import torch
-import torch.nn.functional as F
-from torchvision.models.segmentation import (
-    deeplabv3_mobilenet_v3_large,
-    DeepLabV3_MobileNet_V3_Large_Weights,
+from PIL import Image
+from transformers import (
+    SegformerImageProcessor,
+    SegformerForSemanticSegmentation,
 )
 
 
 class Segmenter:
+
     def __init__(self, device=None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        weights = DeepLabV3_MobileNet_V3_Large_Weights.DEFAULT
-        self.model = deeplabv3_mobilenet_v3_large(weights=weights).to(self.device).eval()
-        self.transforms = weights.transforms()
-        self.categories = weights.meta["categories"]
+
+        self.device = device or (
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+
+        print("Loading SegFormer ADE20K model...")
+
+        self.processor = SegformerImageProcessor.from_pretrained(
+            "nvidia/segformer-b2-finetuned-ade-512-512"
+        )
+
+        self.model = SegformerForSemanticSegmentation.from_pretrained(
+            "nvidia/segformer-b2-finetuned-ade-512-512"
+        ).to(self.device)
+
+        self.model.eval()
+
+        self.id2label = self.model.config.id2label
+        self.label2id = self.model.config.label2id
+
+        print(f"Loaded {len(self.id2label)} ADE20K classes")
 
     @torch.no_grad()
-    def segment(self, rgb_uint8: "np.ndarray") -> "np.ndarray":
-        """
-        rgb_uint8: (H, W, 3) uint8 RGB image.
-        Returns: (H, W) int64 array where each pixel is a class index
-                 into self.categories (0 = background).
-        """
-        import numpy as np
-        h, w = rgb_uint8.shape[:2]
+    def segment(self, rgb_uint8: np.ndarray):
 
-        img_tensor = torch.from_numpy(rgb_uint8).permute(2, 0, 1)  # (3, H, W)
-        batch = self.transforms(img_tensor).unsqueeze(0).to(self.device)
+        image = Image.fromarray(rgb_uint8)
 
-        output = self.model(batch)["out"]  # (1, num_classes, h', w')
-        output = F.interpolate(output, size=(h, w), mode="bilinear", align_corners=False)
-        class_map = output.argmax(dim=1).squeeze(0).cpu().numpy()  # (H, W)
-        return class_map
+        inputs = self.processor(
+            images=image,
+            return_tensors="pt"
+        )
+
+        inputs = {
+            k: v.to(self.device)
+            for k, v in inputs.items()
+        }
+
+        outputs = self.model(**inputs)
+
+        logits = outputs.logits
+
+        logits = torch.nn.functional.interpolate(
+            logits,
+            size=image.size[::-1],
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        prediction = logits.argmax(dim=1)[0]
+
+        return prediction.cpu().numpy()
+
+    def class_name(self, class_id):
+
+        return self.id2label[int(class_id)]
+
+    def detected_classes(self, class_map):
+
+        ids = np.unique(class_map)
+
+        names = []
+
+        for idx in ids:
+
+            if idx in self.id2label:
+
+                names.append(self.id2label[idx])
+
+        return sorted(names)
+
+    def class_mask(self, class_map, class_name):
+
+        if class_name not in self.label2id:
+
+            raise ValueError(f"{class_name} not found")
+
+        idx = self.label2id[class_name]
+
+        return class_map == idx
 
 
 if __name__ == "__main__":
-    import numpy as np
-    print("Smoke test: building segmenter and running on a random image.")
-    print("(Requires downloading pretrained weights on first run.)")
+
+    print("Testing ADE20K Segmenter")
+
+    img = np.random.randint(
+        0,
+        255,
+        (512, 512, 3),
+        dtype=np.uint8
+    )
+
     seg = Segmenter()
-    dummy = (np.random.rand(240, 320, 3) * 255).astype(np.uint8)
-    class_map = seg.segment(dummy)
-    print("Output shape:", class_map.shape, "dtype:", class_map.dtype)
-    print("Unique classes detected:", np.unique(class_map))
+
+    mask = seg.segment(img)
+
+    print("Mask Shape:", mask.shape)
+
+    print()
+
+    print("Detected Classes:")
+
+    for cls in seg.detected_classes(mask):
+
+        print(cls)
