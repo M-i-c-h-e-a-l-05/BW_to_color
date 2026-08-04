@@ -67,6 +67,8 @@ from class_colors import (
     reset_user_colors,
 )
 
+from context_aware import apply_context_aware_consistency
+
 # ---------------------------------------------------------
 # Main Class
 # ---------------------------------------------------------
@@ -79,7 +81,8 @@ class RealtimeColorizer:
         base_model_dir="../model1/models",
         blend_strength=0.75,
         edge_feather=5,
-        saturation_boost=1.8
+        saturation_boost=1.8,
+        context_aware=True
     ):
 
         print("=" * 60)
@@ -111,6 +114,13 @@ class RealtimeColorizer:
         self.edge_feather = edge_feather
 
         self.saturation_boost = saturation_boost
+
+        # Automatically pulls shadow/reflection colors from their
+        # surrounding context instead of leaving them at whatever the
+        # base model guessed independently. Manual per-class colors
+        # (set via set_user_colors) are still applied afterward, so
+        # this and the GUI color pickers can be used together.
+        self.context_aware = context_aware
 
         print()
 
@@ -539,6 +549,27 @@ class RealtimeColorizer:
             )
 
         )
+
+        # ---------------------------------------------
+        # Context-Aware Consistency (shadows / reflections)
+        # ---------------------------------------------
+        # Runs before manual overrides so a user's explicit color
+        # choice for a class always wins where the two would
+        # otherwise conflict.
+
+        if self.context_aware:
+
+            ab = apply_context_aware_consistency(
+
+                ab,
+
+                class_map,
+
+                L,
+
+                self.segmenter.id2label
+
+            )
 
         # ---------------------------------------------
         # Apply User Colours
