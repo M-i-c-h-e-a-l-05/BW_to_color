@@ -41,19 +41,10 @@ from typing import List
 from PIL import Image
 
 # ---------------------------------------------------------
-# Load the original Zhang colorizer
+# Load the original DDColor colorizer
 # ---------------------------------------------------------
 
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "model1"
-    )
-)
-
-from colorize_pretrained import load_colorizer
+from ddcolor_model import DDColorModel
 
 # ---------------------------------------------------------
 # Local modules
@@ -93,10 +84,20 @@ class RealtimeColorizer:
 
         # -------------------------------------------------
 
-        print("[1/3] Loading Zhang Colorizer...")
+        print("[1/3] Loading DDColor...")
 
-        self.base_net = load_colorizer(
-            base_model_dir
+        checkpoint = os.path.join(
+            os.path.dirname(__file__),
+            "DDColor",
+            "pretrain",
+            "ddcolor_paper_tiny.pth"
+        )
+
+        self.base_net = DDColorModel(
+            checkpoint=checkpoint,
+            device="cpu",
+            model_size="tiny",
+            input_size=512
         )
 
         # -------------------------------------------------
@@ -242,69 +243,11 @@ class RealtimeColorizer:
     # -----------------------------------------------------
     # Base Zhang Colorizer
     # -----------------------------------------------------
-
-    def _base_colorize_ab(
-        self,
-        bgr_image
-    ):
+    def _base_colorize(self, bgr_image):
         """
-        Runs the original Zhang et al. model and returns only
-        the predicted a,b channels.
+        Runs DDColor and returns a colorized BGR image.
         """
-
-        scaled = bgr_image.astype(np.float32) / 255.0
-
-        lab = cv.cvtColor(
-            scaled,
-            cv.COLOR_BGR2LAB
-        )
-
-        resized = cv.resize(
-            lab,
-            (224, 224)
-        )
-
-        L = resized[:, :, 0]
-
-        L -= 50
-
-        self.base_net.setInput(
-
-            cv.dnn.blobFromImage(L)
-
-        )
-
-        ab = self.base_net.forward()[0]
-
-        ab = ab.transpose((1, 2, 0))
-
-        ab = cv.resize(
-
-            ab,
-
-            (
-
-                bgr_image.shape[1],
-
-                bgr_image.shape[0]
-
-            )
-
-        )
-
-        ab *= self.saturation_boost
-
-        ab = np.clip(
-
-            ab,
-
-            -127,
-
-            127
-
-        )
-
-        return ab
+        return self.base_net.colorize(bgr_image)
 
     # -----------------------------------------------------
     # Extract L Channel
@@ -502,21 +445,18 @@ class RealtimeColorizer:
         # Original L channel
         # ---------------------------------------------
 
-        L = self._prepare_lab(
+        colorized = self._base_colorize(bgr_image)
 
-            bgr_image
+        scaled = colorized.astype(np.float32) / 255.0
 
+        lab = cv.cvtColor(
+            scaled,
+            cv.COLOR_BGR2LAB
         )
 
-        # ---------------------------------------------
-        # Base AI Colorization
-        # ---------------------------------------------
+        ab = lab[:, :, 1:]
 
-        ab = self._base_colorize_ab(
-
-            bgr_image
-
-        )
+        L = self._prepare_lab(bgr_image)
 
         # ---------------------------------------------
         # Semantic Segmentation

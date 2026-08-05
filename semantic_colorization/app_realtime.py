@@ -334,7 +334,7 @@ the detected regions.
 ---
 ## Conditional Image Colorization
 
-✔ Zhang et al. Colorization Network
+✔ DDColor Colorization Network
 
 ✔ SegFormer ADE20K Semantic Segmentation
 
