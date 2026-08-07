@@ -1,6 +1,40 @@
-B_to_c/
-models/
+# Duplicate DDColor copy
+semantic_colorization/DDColor/
+
+# Python
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+B_to_c/
+venv/
+.venv/
+env/
+ENV/
+
+# Large files
 *.zip
 *.mp4
+
+# Models
+models/
+weights/
+
+# Historical dataset
+HistoricalDatasetBuilder/dataset/
+HistoricalDatasetBuilder/rejected/
+
+# Generated files
+HistoricalDatasetBuilder/metadata/
+HistoricalDatasetBuilder/logs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store

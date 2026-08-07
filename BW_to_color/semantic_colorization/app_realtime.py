@@ -3,7 +3,7 @@ Conditional Image Colorization GUI
 
 Uses
 • SegFormer ADE20K
-• DDColor Colorizer
+• Zhang Colorizer
 • Dynamic Semantic Colour Selection
 
 Author:
@@ -334,7 +334,7 @@ the detected regions.
 ---
 ## Conditional Image Colorization
 
-✔ DDColor Colorization Network
+✔ Zhang et al. Colorization Network
 
 ✔ SegFormer ADE20K Semantic Segmentation
 
