@@ -69,16 +69,9 @@ def main():
     # Download
     #######################################################
 
-    # downloader = ImageDownloader()
+    downloader = ImageDownloader()
 
-    # downloader.download(metadata)
-
-    downloader = ImageDownloader(
-            target_era="WWII"
-        )
-    
     downloader.download(metadata)
-    
 
     #######################################################
     # Quality filtering

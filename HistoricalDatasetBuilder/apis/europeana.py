@@ -516,17 +516,34 @@ class EuropeanaAPI:
 
         image_url = None
 
-        if "edmPreview" in item:
+        # Prefer original image
+        if "edmIsShownBy" in item:
+
+            shown = item["edmIsShownBy"]
+
+            if isinstance(shown, list) and len(shown):
+                image_url = shown[0]
+
+            elif isinstance(shown, str):
+                image_url = shown
+
+
+        # Fallback to preview
+        if image_url is None and "edmPreview" in item:
 
             preview = item["edmPreview"]
 
             if isinstance(preview, list) and len(preview):
-
                 image_url = preview[0]
 
             elif isinstance(preview, str):
-
                 image_url = preview
+
+
+        # Reject API thumbnails
+        if image_url and "api.europeana.eu/thumbnail" in image_url:
+
+            return None
 
         if image_url is None:
 

@@ -119,6 +119,32 @@ def remove_rejected_images():
     print("REMOVING PREVIOUSLY REJECTED IMAGES")
     print("=" * 60)
 
+    # --------------------------------------------------------
+    # Build a filename -> [paths] index of the dataset ONCE,
+    # instead of doing a full rglob() per rejected file.
+    # --------------------------------------------------------
+
+    print("Indexing dataset files...")
+
+    dataset_index = {}
+
+    for file_path in DATASET_DIR.rglob("*"):
+
+        if not file_path.is_file():
+            continue
+
+        dataset_index.setdefault(
+            file_path.name,
+            []
+        ).append(file_path)
+
+    print(
+        f"Indexed {sum(len(v) for v in dataset_index.values())} "
+        f"dataset files"
+    )
+
+    print()
+
     for category in CATEGORIES:
 
         rejected_folder = (
@@ -135,8 +161,9 @@ def remove_rejected_images():
 
             filename = rejected_file.name
 
-            matches = list(
-                DATASET_DIR.rglob(filename)
+            matches = dataset_index.get(
+                filename,
+                []
             )
 
             if not matches:
@@ -450,12 +477,12 @@ def find_near_duplicates():
 
             for entry in entries:
 
-                entry_id = id(entry)
+                entry_path = entry[1]
 
-                if entry_id not in candidate_ids:
+                if entry_path not in candidate_ids:
 
                     candidate_ids.add(
-                        entry_id
+                        entry_path
                     )
 
                     candidate_entries.append(
@@ -550,6 +577,8 @@ def find_near_duplicates():
         # Add to buckets
         # ----------------------------------------------------
 
+        entry = (current_hash, file_path)
+
         for bucket_key in bucket_keys:
 
             if bucket_key not in buckets:
@@ -557,10 +586,7 @@ def find_near_duplicates():
                 buckets[bucket_key] = []
 
             buckets[bucket_key].append(
-                (
-                    current_hash,
-                    file_path
-                )
+                entry
             )
 
     # ========================================================
@@ -692,4 +718,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-

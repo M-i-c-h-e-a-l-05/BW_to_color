@@ -2,19 +2,9 @@
 downloader/downloader.py
 
 Parallel Image Downloader
-WWII Dataset Collection Version
-
-Features:
-- Parallel downloading
-- Automatic retries
-- Image verification
-- Resume support
-- Forced destination folder
-- Skips existing files
-
-Author: Micheal Leveiro
 """
 
+import os
 import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,21 +18,17 @@ class ImageDownloader:
     def __init__(
         self,
         workers=16,
-        retries=5,
-        timeout=30,
-        target_era=None
+        retries=3,
+        timeout=20,
+        target_era="WWII"
     ):
 
         self.workers = workers
         self.retries = retries
         self.timeout = timeout
 
-        # If target_era is provided, ALL downloaded
-        # images will be placed there.
-        #
-        # Example:
-        # target_era="WWII"
-
+        # Force everything into this era folder.
+        # Set to None to fall back to per-record year classification.
         self.target_era = target_era
 
         self.lock = threading.Lock()
@@ -51,9 +37,7 @@ class ImageDownloader:
         self.failed = 0
         self.skipped = 0
 
-    # ============================================================
-    # NORMAL ERA CLASSIFICATION
-    # ============================================================
+    ############################################################
 
     def get_era(self, year):
 
@@ -61,100 +45,55 @@ class ImageDownloader:
             return "Unknown"
 
         if year <= 1919:
-            return "1900"
+            return "1900_1919"
 
         elif year <= 1939:
-            return "1920"
+            return "1920_1939"
 
         elif year <= 1945:
             return "WWII"
 
         elif year <= 1959:
-            return "1950"
+            return "1950s"
 
         elif year <= 1969:
-            return "1960"
+            return "1960s"
 
         elif year <= 1979:
-            return "1970"
+            return "1970s"
 
         else:
             return "Modern"
 
-    # ============================================================
-    # FILENAME
-    # ============================================================
+    ############################################################
 
     def filename(self, record):
 
-        image_id = str(
-            record.get("id", "unknown")
-        ).replace("/", "_")
-
-        image_id = image_id.replace("\\", "_")
-
-        url = str(
-            record.get("image_url", "")
-        ).lower()
+        image_id = str(record.get("id", "unknown")).replace("/", "_")
 
         ext = ".jpg"
+
+        url = str(record.get("image_url", "")).split("?")[0].lower()
 
         if ".png" in url:
             ext = ".png"
 
-        elif ".webp" in url:
-            ext = ".webp"
-
-        elif ".tiff" in url:
-            ext = ".tiff"
-
-        elif ".tif" in url:
-            ext = ".tif"
-
         return image_id + ext
 
-    # ============================================================
-    # DOWNLOAD ONE IMAGE
-    # ============================================================
+    ############################################################
 
     def download_one(self, record):
 
-        # --------------------------------------------------------
-        # Determine destination
-        # --------------------------------------------------------
-
         if self.target_era is not None:
-
             era = self.target_era
-
         else:
+            era = self.get_era(record.get("year"))
 
-            era = self.get_era(
-                record.get("year")
-            )
+        folder = Path("dataset") / era
 
-        folder = (
-            Path("dataset") /
-            era
-        )
+        folder.mkdir(parents=True, exist_ok=True)
 
-        folder.mkdir(
-            parents=True,
-            exist_ok=True
-        )
-
-        # --------------------------------------------------------
-        # Filename
-        # --------------------------------------------------------
-
-        file_path = (
-            folder /
-            self.filename(record)
-        )
-
-        # --------------------------------------------------------
-        # Skip existing image
-        # --------------------------------------------------------
+        file_path = folder / self.filename(record)
 
         if file_path.exists():
 
@@ -163,163 +102,67 @@ class ImageDownloader:
 
             return
 
-        url = record.get("image_url")
+        url = str(record.get("image_url", ""))
 
-        if not url:
+        # Reject missing URLs or non-image placeholders up front.
+        if not url or url.split("?")[0].lower().endswith(".svg"):
 
             with self.lock:
                 self.failed += 1
 
             return
 
-        # ========================================================
-        # RETRIES
-        # ========================================================
-
-        for attempt in range(
-            1,
-            self.retries + 1
-        ):
+        for attempt in range(self.retries):
 
             try:
 
                 response = requests.get(
-
                     url,
-
                     timeout=self.timeout,
-
                     stream=True,
-
                     headers={
-                        "User-Agent":
-                        "HistoricalDatasetBuilder/1.0"
+                        "User-Agent": "HistoricalDatasetBuilder/1.0"
                     }
-
                 )
 
                 response.raise_for_status()
 
-                # ------------------------------------------------
-                # Write image
-                # ------------------------------------------------
+                with open(file_path, "wb") as f:
 
-                with open(
-                    file_path,
-                    "wb"
-                ) as f:
-
-                    for chunk in response.iter_content(
-                        chunk_size=8192
-                    ):
+                    for chunk in response.iter_content(8192):
 
                         if chunk:
                             f.write(chunk)
 
-                # ------------------------------------------------
                 # Verify image
-                # ------------------------------------------------
-
-                with Image.open(
-                    file_path
-                ) as image:
-
-                    image.verify()
-
-                # ------------------------------------------------
-                # Success
-                # ------------------------------------------------
+                with Image.open(file_path) as img:
+                    img.verify()
 
                 with self.lock:
 
                     self.downloaded += 1
 
-                    count = self.downloaded
-
-                    if count % 100 == 0:
+                    if self.downloaded % 100 == 0:
 
                         print(
-                            f"Downloaded: {count}"
+                            f"Downloaded {self.downloaded}"
                         )
 
                 return
 
-            except Exception as e:
-
-                # Remove incomplete/corrupt file
+            except Exception:
 
                 if file_path.exists():
-
-                    try:
-                        file_path.unlink()
-                    except Exception:
-                        pass
-
-                if attempt < self.retries:
-
-                    print(
-                        f"Retry "
-                        f"{attempt}/{self.retries}: "
-                        f"{url}"
-                    )
-
-        # ========================================================
-        # FAILED
-        # ========================================================
+                    file_path.unlink()
 
         with self.lock:
-
             self.failed += 1
 
-    # ============================================================
-    # DOWNLOAD ALL
-    # ============================================================
+    ############################################################
 
     def download(self, metadata):
 
-        print()
-        print("=" * 60)
-        print("STARTING PARALLEL DOWNLOAD")
-        print("=" * 60)
-
-        print(
-            f"Records       : {len(metadata)}"
-        )
-
-        print(
-            f"Workers       : {self.workers}"
-        )
-
-        print(
-            f"Retries       : {self.retries}"
-        )
-
-        if self.target_era:
-
-            print(
-                f"Destination   : dataset/"
-                f"{self.target_era}"
-            )
-
-        else:
-
-            print(
-                "Destination   : "
-                "year-based classification"
-            )
-
-        print("=" * 60)
-        print()
-
-        # Reset counters
-
-        self.downloaded = 0
-        self.failed = 0
-        self.skipped = 0
-
-        # ========================================================
-        # THREAD POOL
-        # ========================================================
+        print("\nStarting Parallel Download...\n")
 
         with ThreadPoolExecutor(
             max_workers=self.workers
@@ -336,39 +179,21 @@ class ImageDownloader:
 
             ]
 
-            for future in as_completed(
-                futures
-            ):
+            for future in as_completed(futures):
 
                 try:
-
                     future.result()
-
                 except Exception as e:
+                    print(f"Worker error: {e}")
 
-                    print(
-                        f"Worker error: {e}"
-                    )
+        print("\nDownload Finished")
 
-        # ========================================================
-        # SUMMARY
-        # ========================================================
+        print("--------------------------------")
 
-        print()
-        print("=" * 60)
-        print("DOWNLOAD FINISHED")
-        print("=" * 60)
+        print("Downloaded :", self.downloaded)
 
-        print(
-            f"Downloaded : {self.downloaded}"
-        )
+        print("Skipped    :", self.skipped)
 
-        print(
-            f"Skipped    : {self.skipped}"
-        )
+        print("Failed     :", self.failed)
 
-        print(
-            f"Failed     : {self.failed}"
-        )
-
-        print("=" * 60)
+        print("--------------------------------")

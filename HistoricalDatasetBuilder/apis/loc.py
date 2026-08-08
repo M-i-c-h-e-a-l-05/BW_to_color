@@ -322,14 +322,28 @@ class LOCAPI:
 
     def extract_image(self, item):
         """
-        Get the highest-quality image URL.
+        Get valid photograph URL only.
+        Reject SVG placeholders.
         """
 
         urls = item.get("image_url", [])
 
-        if isinstance(urls, list) and len(urls) > 0:
+        if not isinstance(urls, list):
+            return None
 
-            return urls[-1]
+
+        # Prefer large JPEG/PNG images
+        for url in reversed(urls):
+
+            url = str(url).lower()
+
+            if (
+                url.endswith(".jpg")
+                or url.endswith(".jpeg")
+                or url.endswith(".png")
+            ):
+                return url
+
 
         return None
 
