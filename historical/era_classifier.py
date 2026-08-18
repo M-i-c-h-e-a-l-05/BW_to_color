@@ -48,21 +48,13 @@ from torchvision.models import resnet18
 # ------------------------------------------------------------
 
 ERA_LABELS = [
-
-    "1900s",
-
-    "1920s",
-
-    "WWII",
-
-    "1950s",
-
-    "1960s",
-
-    "1970s",
-
-    "Modern"
-
+    "1900",
+    "1920",
+    "1950",
+    "1960",
+    "1970",
+    "Modern",
+    "WWII"
 ]
 
 NUM_CLASSES = len(ERA_LABELS)
@@ -78,7 +70,7 @@ DEFAULT_MODEL_PATH = os.path.join(
 
     "weights",
 
-    "era_classifier_resnet18.pth"
+    "best_model.pth"
 
 )
 
@@ -121,104 +113,40 @@ IMAGE_TRANSFORM = transforms.Compose([
 
 ERA_METADATA = {
 
-    "1900s":{
-
-        "war_period":False,
-
-        "expected_palette":"sepia",
-
-        "color_temperature":"warm",
-
-        "contrast":"low",
-
-        "saturation":0.55,
-
+    "1900": {
+        "expected_palette": "sepia",
+        "saturation": 0.55,
     },
 
-    "1920s":{
-
-        "war_period":False,
-
-        "expected_palette":"vintage",
-
-        "color_temperature":"warm",
-
-        "contrast":"medium",
-
-        "saturation":0.65,
-
+    "1920": {
+        "expected_palette": "vintage",
+        "saturation": 0.65,
     },
 
-    "WWII":{
-
-        "war_period":True,
-
-        "expected_palette":"muted",
-
-        "color_temperature":"warm",
-
-        "contrast":"high",
-
-        "saturation":0.70,
-
+    "1950": {
+        "expected_palette": "kodachrome",
+        "saturation": 1.05,
     },
 
-    "1950s":{
-
-        "war_period":False,
-
-        "expected_palette":"kodachrome",
-
-        "color_temperature":"neutral",
-
-        "contrast":"high",
-
-        "saturation":1.10,
-
+    "1960": {
+        "expected_palette": "vivid",
+        "saturation": 1.20,
     },
 
-    "1960s":{
-
-        "war_period":False,
-
-        "expected_palette":"vivid",
-
-        "color_temperature":"neutral",
-
-        "contrast":"medium",
-
-        "saturation":1.20,
-
+    "1970": {
+        "expected_palette": "warm",
+        "saturation": 1.05,
     },
 
-    "1970s":{
-
-        "war_period":False,
-
-        "expected_palette":"warm",
-
-        "color_temperature":"warm",
-
-        "contrast":"medium",
-
-        "saturation":1.05,
-
+    "Modern": {
+        "expected_palette": "natural",
+        "saturation": 1.00,
     },
 
-    "Modern":{
-
-        "war_period":False,
-
-        "expected_palette":"natural",
-
-        "color_temperature":"neutral",
-
-        "contrast":"high",
-
-        "saturation":1.00,
-
+    "WWII": {
+        "expected_palette": "muted",
+        "saturation": 0.70,
     }
-
 }
 
 

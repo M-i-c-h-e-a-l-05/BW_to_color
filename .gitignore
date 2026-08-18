@@ -38,3 +38,22 @@ HistoricalDatasetBuilder/logs/
 .vscode/
 .idea/
 .DS_Store
+historical/dataset/
+
+# Datasets
+historical/dataset/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+B_to_c/
+
+# Model checkpoints
+*.pth
+*.pt
+
+# Outputs
+outputs/
+results/

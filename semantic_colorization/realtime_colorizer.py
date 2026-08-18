@@ -44,21 +44,24 @@ from PIL import Image
 # Load the original DDColor colorizer
 # ---------------------------------------------------------
 
-from ddcolor_model import DDColorModel
+from semantic_colorization.ddcolor_model import DDColorModel
 
 # ---------------------------------------------------------
 # Local modules
 # ---------------------------------------------------------
 
-from segmenter import Segmenter
+from semantic_colorization.segmenter import Segmenter
 
-from class_colors import (
+from semantic_colorization.class_colors import (
     get_color,
     set_user_colors,
     reset_user_colors,
 )
 
-from context_aware import apply_context_aware_consistency
+from semantic_colorization.context_aware import apply_context_aware_consistency
+
+from historical.era_classifier import EraClassifier
+from historical.era_aesthetic import EraAesthetic
 
 # ---------------------------------------------------------
 # Main Class
@@ -84,7 +87,7 @@ class RealtimeColorizer:
 
         # -------------------------------------------------
 
-        print("[1/3] Loading DDColor...")
+        print("[1/5] Loading DDColor...")
 
         checkpoint = os.path.join(
             os.path.dirname(__file__),
@@ -102,13 +105,36 @@ class RealtimeColorizer:
 
         # -------------------------------------------------
 
-        print("[2/3] Loading ADE20K Segmenter...")
+        print("[2/5] Loading Historical Era Classifier...")
+
+        era_checkpoint = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "historical",
+            "weights",
+            "best_model.pth"
+        )
+
+        self.era_classifier = EraClassifier(
+            checkpoint_path=era_checkpoint,
+            device="cpu"
+        )
+
+        # -------------------------------------------------
+
+        print("[3/5] Loading Era Aesthetic Engine...")
+
+        self.era_aesthetic = EraAesthetic()
+
+        # -------------------------------------------------
+
+        print("[4/5] Loading ADE20K Segmenter...")
 
         self.segmenter = Segmenter()
 
         # -------------------------------------------------
 
-        print("[3/3] Initializing Parameters...")
+        print("[5/5] Initializing Parameters...")
 
         self.blend_strength = blend_strength
 
@@ -572,16 +598,31 @@ class RealtimeColorizer:
         )
 
         result = (
-
             result
-
             * 255
-
         ).astype(
-
             np.uint8
-
         )
+
+        # ============================================================
+        # HISTORICAL ERA CLASSIFICATION
+        # ============================================================
+
+        era_prediction = self.predict_era(
+            bgr_image
+        )
+
+        # ============================================================
+        # APPLY ERA-SPECIFIC AESTHETIC
+        # ============================================================
+
+        result = self.era_aesthetic.apply(
+            result,
+            era_prediction["era"]
+        )
+
+        # Store prediction for GUI
+        self.last_era_prediction = era_prediction
 
         return result
 
@@ -810,6 +851,28 @@ class RealtimeColorizer:
         print("Video Saved")
 
         print(output_path)
+
+
+    # ============================================================
+    # HISTORICAL ERA PREDICTION
+    # ============================================================
+
+    def predict_era(
+        self,
+        bgr_image
+    ):
+
+        prediction = self.era_classifier.predict(
+            bgr_image
+        )
+
+        self.last_era = prediction["era"]
+
+        self.last_era_confidence = (
+            prediction["confidence"]
+        )
+
+        return prediction
 
 if __name__ == "__main__":
 

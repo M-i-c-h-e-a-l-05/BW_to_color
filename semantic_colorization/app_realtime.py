@@ -18,9 +18,9 @@ import numpy as np
 
 import gradio as gr
 
-from realtime_colorizer import RealtimeColorizer
+from semantic_colorization.realtime_colorizer import RealtimeColorizer
 
-from class_colors import (
+from semantic_colorization.class_colors import (
     available_classes,
     update_from_hex_dictionary,
 )
