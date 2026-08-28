@@ -29,6 +29,8 @@ from semantic_colorization.class_colors import (
     update_from_hex_dictionary,
 )
 
+from historical.era_classifier import ERA_LABELS
+
 # -------------------------------------------------------
 # Load pipeline once
 # -------------------------------------------------------
@@ -92,8 +94,8 @@ def apply_user_colours(colour_dictionary):
 # IMAGE CALLBACK
 # ==========================================================
 
-def colourize_image(image, domain, blend, saturation, sky, grass, tree, road,
-                     building, water, car, person):
+def colourize_image(image, domain, era, blend, saturation, sky, grass, tree,
+                     road, building, water, car, person):
 
     if image is None:
         return None, "No image uploaded."
@@ -103,6 +105,7 @@ def colourize_image(image, domain, blend, saturation, sky, grass, tree, road,
     if domain == "historical":
         pipeline.set_blend_strength(blend)
         pipeline.set_saturation(saturation)
+        pipeline.set_forced_era(era)
 
         colours = build_colour_dictionary(
             sky, grass, tree, road, building, water, car, person
@@ -112,7 +115,17 @@ def colourize_image(image, domain, blend, saturation, sky, grass, tree, road,
         result = router.colorize(bgr, domain)
 
         detected = pipeline.get_detected_objects()
-        text = ", ".join(detected) if detected else "No ADE20K objects detected."
+        objects_text = ", ".join(detected) if detected else "No ADE20K objects detected."
+
+        prediction = pipeline.last_era_prediction
+        if era != "Auto":
+            era_text = f"Era (manual): {era}"
+        elif prediction:
+            era_text = f"Era (auto): {prediction['era']} ({prediction['confidence']:.0%})"
+        else:
+            era_text = "Era: unknown"
+
+        text = f"{era_text} | {objects_text}"
     else:
         result = router.colorize(bgr, domain)
         text = f"Domain: {domain}"
@@ -279,6 +292,12 @@ the detected regions.
         label="Input Domain",
     )
 
+    era_dropdown = gr.Dropdown(
+        choices=["Auto"] + list(ERA_LABELS),
+        value="Auto",
+        label="Historical Period (used when Input Domain = historical)",
+    )
+
     with gr.Row():
         blend_slider = gr.Slider(
             minimum=0, maximum=1, value=0.75, step=0.05,
@@ -370,9 +389,10 @@ the detected regions.
     image_button.click(
         fn=colourize_image,
         inputs=[
-            image_input, domain_dropdown, blend_slider, saturation_slider,
-            sky_picker, grass_picker, tree_picker, road_picker,
-            building_picker, water_picker, car_picker, person_picker,
+            image_input, domain_dropdown, era_dropdown, blend_slider,
+            saturation_slider, sky_picker, grass_picker, tree_picker,
+            road_picker, building_picker, water_picker, car_picker,
+            person_picker,
         ],
         outputs=[image_output, detected_box],
     )

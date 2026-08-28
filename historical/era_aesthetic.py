@@ -1,276 +1,166 @@
 """
-historical/era_aesthetic.py
+era_aesthetic.py
+=================
 
-Applies historical visual aesthetics based on the
-predicted era.
+Historical Palette Adapter.
 
-The classifier determines the era.
-This module determines how the final colorized
-image should look.
+Applies a period-accurate color grade to an already-colorized BGR
+uint8 image, based on the era predicted by EraClassifier (or a
+manually chosen era from the GUI).
+
+Each era is graded with three ingredients, all standard photographic
+color-grading building blocks:
+    1. Saturation scale   (from ERA_METADATA[era]["saturation"])
+    2. A BGR channel tint  (per-channel gain, mimics film-stock color response)
+    3. A tone curve         (contrast/gamma, mimics print/development characteristics)
+
+Author:
+    Micheal Leveiro Project
 """
 
 import cv2
 import numpy as np
 
+from historical.era_classifier import ERA_LABELS, ERA_METADATA
+
+
+# ------------------------------------------------------------
+# Per-era grading recipes
+#
+# tint   : (B, R) multiplicative gain applied to the B and R channels
+#          of the BGR image (G is left as the pivot channel).
+# gamma  : >1 brightens midtones, <1 darkens/adds contrast.
+# contrast: simple linear contrast around mid-gray (128).
+# ------------------------------------------------------------
+
+ERA_GRADES = {
+
+    "1900": {  # sepia
+        "tint": (0.75, 1.15),
+        "gamma": 0.90,
+        "contrast": 1.05,
+    },
+
+    "1920": {  # vintage
+        "tint": (0.85, 1.08),
+        "gamma": 0.95,
+        "contrast": 1.00,
+    },
+
+    "1950": {  # kodachrome
+        "tint": (1.05, 1.12),
+        "gamma": 1.05,
+        "contrast": 1.15,
+    },
+
+    "1960": {  # vivid
+        "tint": (1.08, 1.10),
+        "gamma": 1.05,
+        "contrast": 1.20,
+    },
+
+    "1970": {  # warm
+        "tint": (0.90, 1.15),
+        "gamma": 1.00,
+        "contrast": 1.05,
+    },
+
+    "Modern": {  # natural
+        "tint": (1.00, 1.00),
+        "gamma": 1.00,
+        "contrast": 1.00,
+    },
+
+    "WWII": {  # muted
+        "tint": (0.95, 0.95),
+        "gamma": 0.92,
+        "contrast": 0.95,
+    },
+}
+
 
 class EraAesthetic:
+    """
+    Applies era-specific color grading to a colorized image.
+    """
 
     def __init__(self):
+        self.eras = list(ERA_LABELS)
 
-        # --------------------------------------------------
-        # Era-specific settings
-        # --------------------------------------------------
+    # -----------------------------------------------------
+    # List available eras (for a GUI dropdown)
+    # -----------------------------------------------------
 
-        self.presets = {
+    def list_eras(self):
+        return list(self.eras)
 
-            "1900": {
-                "saturation": 0.55,
-                "contrast": 0.85,
-                "warmth": 18,
-                "sepia": 0.45,
-            },
+    # -----------------------------------------------------
+    # Palette description utility
+    # -----------------------------------------------------
 
-            "1920": {
-                "saturation": 0.65,
-                "contrast": 0.90,
-                "warmth": 14,
-                "sepia": 0.30,
-            },
+    def describe(self, era):
+        if era not in ERA_METADATA:
+            raise ValueError(f"Unknown era: {era}")
+        return ERA_METADATA[era]
 
-            "1950": {
-                "saturation": 1.05,
-                "contrast": 1.10,
-                "warmth": 4,
-                "sepia": 0.05,
-            },
+    # -----------------------------------------------------
+    # Core grading routine
+    # -----------------------------------------------------
 
-            "1960": {
-                "saturation": 1.20,
-                "contrast": 1.05,
-                "warmth": 0,
-                "sepia": 0.00,
-            },
+    def apply(self, image, era):
+        """
+        Apply the historical color grade for `era` to a BGR uint8 image.
 
-            "1970": {
-                "saturation": 1.05,
-                "contrast": 1.00,
-                "warmth": 8,
-                "sepia": 0.05,
-            },
+        Parameters
+        ----------
+        image : numpy.ndarray
+            BGR uint8 image.
+        era : str
+            One of ERA_LABELS (e.g. "1920", "WWII", "Modern").
 
-            "Modern": {
-                "saturation": 1.00,
-                "contrast": 1.00,
-                "warmth": 0,
-                "sepia": 0.00,
-            },
+        Returns
+        -------
+        numpy.ndarray
+            BGR uint8 image with the era's color grade applied.
+        """
 
-            "WWII": {
-                "saturation": 0.70,
-                "contrast": 1.12,
-                "warmth": 10,
-                "sepia": 0.12,
-            }
-        }
-
-    # ==================================================
-    # Saturation
-    # ==================================================
-
-    def adjust_saturation(
-        self,
-        image,
-        amount
-    ):
-
-        hsv = cv2.cvtColor(
-            image,
-            cv2.COLOR_BGR2HSV
-        )
-
-        hsv = hsv.astype(np.float32)
-
-        hsv[:, :, 1] *= amount
-
-        hsv[:, :, 1] = np.clip(
-            hsv[:, :, 1],
-            0,
-            255
-        )
-
-        hsv = hsv.astype(np.uint8)
-
-        return cv2.cvtColor(
-            hsv,
-            cv2.COLOR_HSV2BGR
-        )
-
-    # ==================================================
-    # Contrast
-    # ==================================================
-
-    def adjust_contrast(
-        self,
-        image,
-        amount
-    ):
-
-        result = image.astype(
-            np.float32
-        )
-
-        result = (
-            (result - 127.5)
-            * amount
-            + 127.5
-        )
-
-        return np.clip(
-            result,
-            0,
-            255
-        ).astype(np.uint8)
-
-    # ==================================================
-    # Warmth
-    # ==================================================
-
-    def adjust_warmth(
-        self,
-        image,
-        amount
-    ):
-
-        result = image.astype(
-            np.float32
-        )
-
-        # BGR
-        result[:, :, 0] -= amount * 0.5
-        result[:, :, 1] += amount * 0.15
-        result[:, :, 2] += amount
-
-        return np.clip(
-            result,
-            0,
-            255
-        ).astype(np.uint8)
-
-    # ==================================================
-    # Sepia
-    # ==================================================
-
-    def apply_sepia(
-        self,
-        image,
-        strength
-    ):
-
-        if strength <= 0:
-            return image
-
-        image_float = image.astype(
-            np.float32
-        )
-
-        # BGR sepia matrix
-        sepia = np.zeros_like(
-            image_float
-        )
-
-        sepia[:, :, 0] = (
-            image_float[:, :, 0] * 0.272
-            + image_float[:, :, 1] * 0.534
-            + image_float[:, :, 2] * 0.131
-        )
-
-        sepia[:, :, 1] = (
-            image_float[:, :, 0] * 0.349
-            + image_float[:, :, 1] * 0.686
-            + image_float[:, :, 2] * 0.168
-        )
-
-        sepia[:, :, 2] = (
-            image_float[:, :, 0] * 0.393
-            + image_float[:, :, 1] * 0.769
-            + image_float[:, :, 2] * 0.189
-        )
-
-        sepia = np.clip(
-            sepia,
-            0,
-            255
-        )
-
-        result = (
-            image_float * (1 - strength)
-            + sepia * strength
-        )
-
-        return np.clip(
-            result,
-            0,
-            255
-        ).astype(np.uint8)
-
-    # ==================================================
-    # Apply Era
-    # ==================================================
-
-    def apply(
-        self,
-        image,
-        era
-    ):
-
-        if era not in self.presets:
-
-            era = "Modern"
-
-        settings = self.presets[era]
-
-        result = image.copy()
-
-        # 1. Saturation
-        result = self.adjust_saturation(
-            result,
-            settings["saturation"]
-        )
-
-        # 2. Contrast
-        result = self.adjust_contrast(
-            result,
-            settings["contrast"]
-        )
-
-        # 3. Warm/cool tone
-        if settings["warmth"] != 0:
-
-            result = self.adjust_warmth(
-                result,
-                settings["warmth"]
+        if era not in ERA_GRADES:
+            raise ValueError(
+                f"Unknown era '{era}'. Expected one of: {self.eras}"
             )
 
-        # 4. Sepia
-        if settings["sepia"] > 0:
+        if image is None or image.size == 0:
+            raise ValueError("Input image is None or empty.")
 
-            result = self.apply_sepia(
-                result,
-                settings["sepia"]
-            )
+        grade = ERA_GRADES[era]
+        saturation = ERA_METADATA[era]["saturation"]
 
-        return result
+        graded = image.astype(np.float32)
 
-    # ==================================================
-    # Get Settings
-    # ==================================================
+        # 1. Channel tint (B and R gain, G is the pivot channel)
+        b_gain, r_gain = grade["tint"]
+        graded[:, :, 0] *= b_gain
+        graded[:, :, 2] *= r_gain
+        graded = np.clip(graded, 0, 255)
 
-    def get_settings(
-        self,
-        era
-    ):
+        # 2. Contrast around mid-gray
+        contrast = grade["contrast"]
+        graded = (graded - 128.0) * contrast + 128.0
+        graded = np.clip(graded, 0, 255)
 
-        return self.presets.get(
-            era,
-            self.presets["Modern"]
-        )
+        # 3. Gamma curve
+        gamma = grade["gamma"]
+        normalized = graded / 255.0
+        graded = np.power(normalized, 1.0 / gamma) * 255.0
+        graded = np.clip(graded, 0, 255).astype(np.uint8)
+
+        # 4. Era-accurate saturation
+        hsv = cv2.cvtColor(graded, cv2.COLOR_BGR2HSV).astype(np.float32)
+        hsv[:, :, 1] *= saturation
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1], 0, 255)
+        graded = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+        return graded
+
+    def __call__(self, image, era):
+        return self.apply(image, era)

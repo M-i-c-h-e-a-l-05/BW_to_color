@@ -60,7 +60,7 @@ from semantic_colorization.class_colors import (
 
 from semantic_colorization.context_aware import apply_context_aware_consistency
 
-from historical.era_classifier import EraClassifier
+from historical.era_classifier import EraClassifier, ERA_LABELS
 from historical.era_aesthetic import EraAesthetic
 
 # ---------------------------------------------------------
@@ -125,6 +125,10 @@ class RealtimeColorizer:
         print("[3/5] Loading Era Aesthetic Engine...")
 
         self.era_aesthetic = EraAesthetic()
+
+        # Manual era override (set via set_forced_era). When None,
+        # the era is auto-detected by self.era_classifier as before.
+        self.forced_era = None
 
         # -------------------------------------------------
 
@@ -608,9 +612,17 @@ class RealtimeColorizer:
         # HISTORICAL ERA CLASSIFICATION
         # ============================================================
 
-        era_prediction = self.predict_era(
-            bgr_image
-        )
+        if self.forced_era is not None:
+            era_prediction = {
+                "era": self.forced_era,
+                "confidence": 1.0,
+                "metadata": self.era_classifier.get_metadata(self.forced_era),
+                "manual": True,
+            }
+        else:
+            era_prediction = self.predict_era(
+                bgr_image
+            )
 
         # ============================================================
         # APPLY ERA-SPECIFIC AESTHETIC
@@ -731,6 +743,28 @@ class RealtimeColorizer:
             value
 
         )
+
+    # -----------------------------------------------------
+    # Set / Clear Forced Era
+    # -----------------------------------------------------
+
+    def set_forced_era(self, era):
+        """
+        Force a specific historical era's color grade instead of
+        auto-detecting it. Pass None (or "Auto") to go back to
+        auto-detection via the era classifier.
+        """
+
+        if era in (None, "Auto", "auto"):
+            self.forced_era = None
+            return
+
+        if era not in ERA_LABELS:
+            raise ValueError(
+                f"Unknown era '{era}'. Expected one of: {ERA_LABELS} or None."
+            )
+
+        self.forced_era = era
 
     # -----------------------------------------------------
     # Reset Everything
